@@ -64,47 +64,17 @@ class AccountMoveLine(models.Model):
     agents = fields.One2many(comodel_name="account.invoice.line.agent",)
     any_settled = fields.Boolean(compute="_compute_any_settled",)
 
-    @api.model
-    def _default_agents(self):
-        """Don't populate agents for supplier invoices."""
-        if self.env.context.get("type", "")[:2] == "in":
-            return []
-        return super()._default_agents()
-
     @api.depends("agents", "agents.settled")
     def _compute_any_settled(self):
         for record in self:
             record.any_settled = any(record.mapped("agents.settled"))
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        """Add agents for records created from automations instead of UI."""
-        # We use this form as this is the way it's returned when no real vals
-        for vals in vals_list:
-            agents_vals = vals.get("agents", [(6, 0, [])])
-            move_id = vals.get("move_id", False)
-
-            if (
-                agents_vals
-                and agents_vals[0][0] == 6
-                and not agents_vals[0][2]
-                and move_id
-            ):
-                inv = self.env["account.move"].browse(move_id)
-                vals["agents"] = (
-                    self._prepare_agents_vals_partner(inv.partner_id)
-                    if inv.type[:3] == "out"
-                    else [(6, 0, [])]
-                )
-        return super().create(vals_list)
-
-    def _prepare_agents_vals(self):
-        self.ensure_one()
-        res = super()._prepare_agents_vals()
-        inv = self.move_id
-        if inv.type[:3] == "out":
-            res += self._prepare_agents_vals_partner(inv.partner_id)
-        return res
+    @api.depends("move_id.partner_id")
+    def _compute_agent_ids(self):
+        for record in self:
+            record.agents = record._prepare_agents_vals_partner(
+                record.move_id.partner_id
+            )
 
 
 class AccountInvoiceLineAgent(models.Model):

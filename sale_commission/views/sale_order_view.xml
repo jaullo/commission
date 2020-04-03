@@ -11,7 +11,13 @@
             >
                 <field name="commission_free" invisible="1" />
                 <field name="invoice_lines" invisible="1" />
-                <field name="agents" invisible="1" />
+                <field name="agents" invisible="1">
+                    <!-- Needed for nested o2m to be saved -->
+                    <tree>
+                        <field name="agent" />
+                        <field name="commission" />
+                    </tree>
+                </field>
                 <button
                     name="button_edit_agents"
                     icon="fa-users"

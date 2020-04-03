@@ -42,7 +42,13 @@
                 position="after"
             >
                 <field name="commission_free" invisible="1" />
-                <field name="agents" invisible="1" />
+                <field name="agents" invisible="1">
+                    <!-- Needed for nested o2m to be saved -->
+                    <tree>
+                        <field name="agent" />
+                        <field name="commission" />
+                    </tree>
+                </field>
                 <field name="any_settled" invisible="1" />
                 <button
                     name="button_edit_agents"
@@ -59,6 +65,15 @@
                     string="Recompute lines agents"
                     states="draft"
                 />
+            </xpath>
+            <xpath
+                expr="//field[@name='line_ids']/tree/field[@name='discount']"
+                position="before"
+            >
+                <field name="commission_free" invisible="1" />
+                <field name="agents" invisible="1" />
+                <field name="any_settled" invisible="1" />
+                <field name="commission_status" invisible="1" />
             </xpath>
             <field name="amount_total" position="after">
                 <field

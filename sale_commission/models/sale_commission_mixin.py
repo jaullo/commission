@@ -1,4 +1,4 @@
-# Copyright 2018 Tecnativa - Pedro M. Baeza
+# Copyright 2018-2020 Tecnativa - Pedro M. Baeza
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
 from odoo import _, api, fields, models
@@ -10,30 +10,22 @@ class SaleCommissionMixin(models.AbstractModel):
         "Mixin model for applying to any object that wants to " "handle commissions"
     )
 
-    @api.model
     def _prepare_agents_vals_partner(self, partner):
         """Utility method for getting agents of a partner."""
-        rec = []
-        for agent in partner.agents:
-            rec.append((0, 0, {"agent": agent.id, "commission": agent.commission.id}))
-        return rec
+        return [
+            (0, 0, {"agent": agent.id, "commission": agent.commission.id})
+            for agent in partner.agents
+        ]
 
-    @api.model
-    def _default_agents(self):
-        agents = []
-        context = self.env.context
-        if context.get("partner_id"):
-            partner = self.env["res.partner"].browse(context["partner_id"])
-            agents = self._prepare_agents_vals_partner(partner)
-        return agents
-
+    # TODO: Rename it to agent_ids
     agents = fields.One2many(
         comodel_name="sale.commission.line.mixin",
         inverse_name="object_id",
         string="Agents & commissions",
         help="Agents/Commissions related to the invoice line.",
-        default=lambda self: self._default_agents(),
-        copy=True,
+        compute="_compute_agent_ids",
+        readonly=False,
+        store=True,
     )
     product_id = fields.Many2one(comodel_name="product.product", string="Product")
     commission_free = fields.Boolean(
@@ -46,6 +38,10 @@ class SaleCommissionMixin(models.AbstractModel):
         compute="_compute_commission_status", string="Commission",
     )
 
+    def _compute_agent_ids(self):
+        """Empty method that needs to be implemented in children models."""
+        raise NotImplementedError()
+
     @api.depends("commission_free", "agents")
     def _compute_commission_status(self):
         for line in self:
@@ -57,13 +53,6 @@ class SaleCommissionMixin(models.AbstractModel):
                 line.commission_status = _("1 commission agent")
             else:
                 line.commission_status = _("%s commission agents") % len(line.agents)
-
-    def _prepare_agents_vals(self):
-        """Hook method for preparing the values of agents.
-
-        :param: self: Record of the object that is being handled.
-        """
-        return []
 
     def recompute_agents(self):
         """Force a recomputation of the agents according prepare method."""
